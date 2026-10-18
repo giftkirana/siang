@@ -1,0 +1,9 @@
+{
+  // เว็บพากย์เสียงฟรี siang.duangjai.site เป็นไฟล์ static ล้วน
+  "name": "siang",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./",
+    "html_handling": "auto-trailing-slash"
+  }
+}
