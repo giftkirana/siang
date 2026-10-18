@@ -42,7 +42,10 @@ select{width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;b
 .now{background:var(--soft);border-radius:10px;padding:10px 12px;margin-top:10px;font-size:1.02rem}
 .now small{display:block;color:var(--mute);font-size:.8rem}
 .prog{height:6px;background:var(--line);border-radius:4px;overflow:hidden;margin-top:8px}.prog i{display:block;height:100%;width:0;background:var(--acc);transition:width .2s}
-.spk{display:grid;grid-template-columns:7em 1fr;gap:8px;align-items:center;margin-top:8px}
+.spk{display:grid;grid-template-columns:6em 1fr 1fr;gap:8px;align-items:center;margin-top:8px}
+@media (max-width:600px){.spk{grid-template-columns:1fr 1fr}.spk label{grid-column:1/-1}}
+.chip.on{background:var(--acc);color:var(--acc-ink);border-color:var(--acc)}
+.styles{display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 12px}
 .note{font-size:.9rem;color:var(--mute)}
 .warn{background:var(--soft);border-left:4px solid var(--acc);padding:10px 12px;border-radius:8px;font-size:.92rem;margin:10px 0 0}
 details{border-top:1px solid var(--line);padding:10px 0}details:first-of-type{border-top:0}
@@ -69,6 +72,8 @@ code{background:var(--soft);padding:1px 6px;border-radius:6px}
 </section>
 
 <section class="card">
+<label>สไตล์เสียง (กดเพื่อเปลี่ยนเป็นเสียงตัวละคร)</label>
+<div class="styles" id="styles"></div>
 <div class="grid">
 <div><label for="voice">เสียง</label><select id="voice"></select></div>
 <div><label for="speed">ความเร็ว</label><div class="rng"><input type="range" id="speed" min="0.5" max="2" step="0.05" value="1"><output id="speedO">1.00×</output></div></div>
@@ -76,7 +81,7 @@ code{background:var(--soft);padding:1px 6px;border-radius:6px}
 <div><label for="vol">ความดัง</label><div class="rng"><input type="range" id="vol" min="0" max="1" step="0.05" value="1"><output id="volO">100%</output></div></div>
 </div>
 <div id="spkBox" hidden>
-<p class="note" style="margin:12px 0 0">พบบทสนทนาหลายคน เลือกเสียงให้แต่ละคน (ขึ้นบรรทัดด้วย <code>ชื่อ:</code>)</p>
+<p class="note" style="margin:12px 0 0">พบบทสนทนาหลายคน เลือกเสียงและสไตล์ให้แต่ละคน (ขึ้นบรรทัดด้วย <code>ชื่อ:</code>) ถึงเครื่องจะมีเสียงไทยเสียงเดียว ก็ใช้สไตล์ต่างกันให้ฟังเป็นคนละคนได้</p>
 <div id="spk"></div>
 </div>
 <div class="warn" id="noThai" hidden></div>
@@ -121,6 +126,7 @@ code{background:var(--soft);padding:1px 6px;border-radius:6px}
 <li><b>ใช้การขึ้นบรรทัดใหม่</b> แทนจุดหรือจุลภาค ระบบจะเว้นจังหวะให้ตรงนั้น</li>
 <li><b>คำที่อ่านผิด</b> ให้สะกดตามเสียงอ่าน เช่น พิมพ์ "ห้าสิบเปอร์เซ็นต์" แทน "50%" หรือ "ไลค์" แทน "like"</li>
 <li><b>ความเร็ว 1.1–1.2 เท่า</b> เหมาะกับคลิป TikTok และ Reels ที่คนดูชอบจังหวะเร็ว</li>
+<li><b>เสียงตัวละคร</b> กดสไตล์เสียง เช่น เด็ก คนแก่ การ์ตูน หุ่นยนต์ เล่าเรื่องผี เพื่อเปลี่ยนเสียงไทยเสียงเดียวให้เป็นตัวละครได้หลายแบบ</li>
 <li><b>ทำบทสนทนา</b> ขึ้นต้นแต่ละบรรทัดด้วยชื่อตามด้วยเครื่องหมาย : เช่น <code>แม่: กินข้าวยัง</code> แล้วเลือกเสียงให้แต่ละคน</li>
 </ul>
 </section>
@@ -151,6 +157,8 @@ const TPL={
  "นิทานก่อนนอน":"กาลครั้งหนึ่ง นานมาแล้ว\nมีกระต่ายน้อยตัวหนึ่ง อาศัยอยู่ในป่าใหญ่\nทุกเช้า มันจะออกไปเก็บดอกไม้ ให้แม่กระต่าย"
 };
 const SPK_RE=/^\s*([^:：\n]{1,16})\s*[:：]\s*(.+)$/;
+const STYLES=[['🙂 ปกติ',1,1],['🧒 เด็ก',1.75,1.1],['✨ วัยรุ่นสดใส',1.35,1.12],['🎙️ ทุ้มนุ่ม',0.55,0.95],['👵 คนแก่',0.75,0.8],['🐰 การ์ตูน',2,1.3],['🤖 หุ่นยนต์',0,0.9],['👻 เล่าเรื่องผี',0.45,0.78],['📰 ผู้ประกาศข่าว',1,1.3]];
+const DEF_STYLE=[0,1,4,3,2,5];
 let voices=[],queue=[],qi=0,state='idle',timer=null,speakers={};
 const txt=$('txt');
 
@@ -162,6 +170,12 @@ txt.value=saved.t||TPL["รีวิวสินค้า"];
 ['speed','pitch','vol'].forEach(k=>{const m={speed:'s',pitch:'p',vol:'o'}[k];if(saved[m])$(k).value=saved[m]});
 speakers=saved.spk||{};
 
+// ---------- สไตล์เสียง ----------
+function markStyle(){const p=+$('pitch').value,r=+$('speed').value;[...$('styles').children].forEach((b,i)=>b.classList.toggle('on',Math.abs(STYLES[i][1]-p)<.01&&Math.abs(STYLES[i][2]-r)<.01))}
+STYLES.forEach((st,i)=>{const b=document.createElement('button');b.type='button';b.className='chip';b.textContent=st[0];
+ b.onclick=()=>{$('pitch').value=st[1];$('speed').value=st[2];outs();markStyle();save();
+  if(state==='idle'&&synth){const u=new SpeechSynthesisUtterance('สวัสดีค่ะ นี่คือเสียงแบบ'+st[0].replace(/^\S+\s/,''));const v=byURI($('voice').value);if(v){u.voice=v;u.lang=v.lang}else u.lang='th-TH';u.pitch=st[1];u.rate=st[2];synth.cancel();synth.speak(u)}};
+ $('styles').appendChild(b)});
 // ---------- ตัวอย่างบท ----------
 Object.keys(TPL).forEach(n=>{const b=document.createElement('button');b.className='chip';b.type='button';b.textContent=n;
  b.onclick=()=>{txt.value=TPL[n];onText();txt.focus()};$('tpl').appendChild(b)});
@@ -190,7 +204,7 @@ const byURI=u=>voices.find(v=>v.voiceURI===u);
 
 // ---------- ช่องปรับค่า ----------
 function outs(){$('speedO').textContent=(+$('speed').value).toFixed(2)+'×';$('pitchO').textContent=(+$('pitch').value).toFixed(2);$('volO').textContent=Math.round($('vol').value*100)+'%'}
-['speed','pitch','vol','voice'].forEach(k=>$(k).addEventListener('input',()=>{outs();save()}));outs();
+['speed','pitch','vol','voice'].forEach(k=>$(k).addEventListener('input',()=>{outs();markStyle();save()}));outs();markStyle();
 
 // ---------- แยกบทสนทนา ----------
 function speakerNames(){
@@ -203,13 +217,18 @@ function renderSpeakers(){
  const names=speakerNames(),box=$('spk');$('spkBox').hidden=!names.length;box.innerHTML='';
  const th=voices.filter(isThai),pool=th.length?th:voices;
  names.forEach((n,i)=>{
-  if(!speakers[n]||!byURI(speakers[n]))speakers[n]=(pool[i%Math.max(pool.length,1)]||{}).voiceURI||'';
+  if(typeof speakers[n]!=='object'||!speakers[n])speakers[n]={v:speakers[n]||'',s:DEF_STYLE[Math.floor(i/Math.max(pool.length,1))%DEF_STYLE.length]};
+  const sp=speakers[n];
+  if(!byURI(sp.v))sp.v=(pool[i%Math.max(pool.length,1)]||{}).voiceURI||'';
   const row=document.createElement('div');row.className='spk';
   const lb=document.createElement('label');lb.textContent=n;lb.style.margin='0';
-  const s=document.createElement('select');
+  const s=document.createElement('select');s.setAttribute('aria-label','เสียงของ '+n);
   [...$('voice').querySelectorAll('option')].forEach(o=>s.appendChild(o.cloneNode(true)));
-  s.value=speakers[n];s.onchange=()=>{speakers[n]=s.value;save()};
-  row.append(lb,s);box.appendChild(row);
+  s.value=sp.v;s.onchange=()=>{sp.v=s.value;save()};
+  const t=document.createElement('select');t.setAttribute('aria-label','สไตล์เสียงของ '+n);
+  STYLES.forEach((st,k)=>{const o=document.createElement('option');o.value=k;o.textContent=st[0];t.appendChild(o)});
+  t.value=sp.s;t.onchange=()=>{sp.s=+t.value;save()};
+  row.append(lb,s,t);box.appendChild(row);
  });
 }
 
@@ -262,9 +281,12 @@ function next(){
  const it=queue[qi];
  if(it.pause){timer=setTimeout(()=>{qi++;next()},it.pause);return}
  const u=new SpeechSynthesisUtterance(it.text);
- const v=byURI(it.who&&speakers[it.who]?speakers[it.who]:$('voice').value);
+ const sp=it.who&&speakers[it.who]&&typeof speakers[it.who]==='object'?speakers[it.who]:null;
+ const v=byURI(sp?sp.v:$('voice').value);
  if(v){u.voice=v;u.lang=v.lang}else u.lang='th-TH';
- u.rate=+$('speed').value;u.pitch=+$('pitch').value;u.volume=+$('vol').value;
+ if(sp){const st=STYLES[sp.s]||STYLES[0];u.pitch=st[1];u.rate=Math.min(4,Math.max(.3,st[2]*+$('speed').value))}
+ else{u.rate=+$('speed').value;u.pitch=+$('pitch').value}
+ u.volume=+$('vol').value;
  $('nowWho').textContent=it.who?it.who+' พูด':(v?label(v):'');$('nowTxt').textContent=it.text;
  let ended=false;
  u.onend=()=>{if(ended)return;ended=true;if(state==='playing'){qi++;next()}};
